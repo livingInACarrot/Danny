@@ -1,39 +1,55 @@
-using System.ComponentModel;
+using NUnit.Framework;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
-public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler
+public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler, IPointerClickHandler
 {
-    [Header("Visual Settings")]
-    [SerializeField] private int normalSortingOrder = 0;
+    [Header("Settings")]
+    [SerializeField] private float rotationSpeed = 0.5f;
 
-    [Header("Rotation Settings")]
-    [SerializeField] private float rotationSpeed = 5f;
-    [SerializeField] private float maxRotationAngle = 45f;
+    public bool InHand = false;
+    public float Width => GetComponent<RectTransform>().rect.width;
+    public float Height => GetComponent<RectTransform>().rect.height;
 
     private Canvas canvas;
+    private PlayingCardsTable cardsHandler;
     private bool isDragging = false;
-    private bool isHighlighted = false;
+    //private bool isHighlighted = false;
     private Vector2 offset;
 
-    private void Start()
+    public void Awake()
     {
         canvas = GetComponentInParent<Canvas>();
+        cardsHandler = canvas.gameObject.GetComponentInParent<PlayingCardsTable>();
+
+        if (canvas == null)
+            Debug.Log("Null canv");
+        if (cardsHandler == null)
+            Debug.Log("Null cardsHandler");
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
         Debug.Log("Pointer Enter");
-        isHighlighted = true;
+        //isHighlighted = true;
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        isHighlighted = false;
+        Debug.Log("Pointer Exit");
+        //isHighlighted = false;
     }
-      
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right && !InHand)
+        {
+            cardsHandler.ReturnCardToHand(this);
+        }
+    }
+
     public void OnPointerDown(PointerEventData eventData)
     {
         if (eventData.button == PointerEventData.InputButton.Left)
@@ -55,6 +71,7 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             isDragging = false;
+            if (InHand) cardsHandler.PlaceCardFromHandOnTable(this);
         }
     }
 
@@ -62,47 +79,57 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     {
         if (isDragging && eventData.button == PointerEventData.InputButton.Left)
         {
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                canvas.transform as RectTransform,
-                eventData.position,
-                canvas.worldCamera,
-                out Vector2 localPointerPosition))
-            {
-                Vector2 newPosition = localPointerPosition + offset;
-                GetComponent<RectTransform>().anchoredPosition = newPosition;
-            }
+            FollowPointer(eventData);
         }
     }
 
     public void OnScroll(PointerEventData eventData)
     {
-        if (!isHighlighted) return;
+        //if (!isHighlighted) return;
 
         float scrollDelta = eventData.scrollDelta.y;
 
-        if (IsCtrlPressed())
+        if (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed)
         {
-            canvas.sortingOrder -= (int)Mathf.Sign(scrollDelta);
+            cardsHandler.ChangeCardInOrder(this, -(int)Mathf.Sign(scrollDelta));
             Debug.Log($"Новый порядок слоя: {canvas.sortingOrder}");
         }
         else
         {
-            float currentRotation = transform.rotation.eulerAngles.z;
-            if (currentRotation > 180f) currentRotation -= 360f;
-
-            transform.rotation = Quaternion.Euler(0f, 0f, currentRotation + scrollDelta * rotationSpeed);
+            RotateCard(scrollDelta);
         }
     }
 
-    private bool IsCtrlPressed()
+    public void ChangeLayer(int newLayer)
     {
-        if (Mouse.current == null) return false;
+        canvas.sortingOrder = newLayer;
+    }
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
+    public void ReturnToHand(Vector2 newPos)
+    {
+        RectTransform rect = GetComponent<RectTransform>();
+        rect.anchoredPosition = newPos;
+        rect.rotation = Quaternion.Euler(0f, 0f, 0f);
+    }
+
+    // Private methods-helpers
+    private void RotateCard(float delta)
+    {
+        float currentRotation = transform.rotation.eulerAngles.z;
+        if (currentRotation > 180f) currentRotation -= 360f;
+        transform.rotation = Quaternion.Euler(0f, 0f, currentRotation + delta * rotationSpeed);
+    }
+
+    private void FollowPointer(PointerEventData eventData)
+    {
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvas.transform as RectTransform,
+            eventData.position,
+            canvas.worldCamera,
+            out Vector2 localPointerPosition))
         {
-            return keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+            Vector2 newPosition = localPointerPosition + offset;
+            GetComponent<RectTransform>().anchoredPosition = newPosition;
         }
-        return false;
     }
 }
