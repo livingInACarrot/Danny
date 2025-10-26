@@ -6,6 +6,8 @@ public class PlayingCardsTable : MonoBehaviour
     private const float HAND_CARDS_DOWN_OFFSET = 20f;
     private const float HAND_CARDS_BETWEEN_OFFSET = 10f;
 
+    public Sprite PictureCardSprite;
+
     private List<Card> cardsInHand = new();
     private List<Card> cardsOnTable = new();
     private int handCardsLayer;

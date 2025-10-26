@@ -3,11 +3,13 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler, IPointerClickHandler
 {
     [Header("Settings")]
     [SerializeField] private float rotationSpeed = 0.5f;
+    [SerializeField] private Sprite sprite;
 
     public bool InHand = false;
     public float Width => GetComponent<RectTransform>().rect.width;
@@ -16,6 +18,7 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     private Canvas canvas;
     private PlayingCardsTable cardsHandler;
     private bool isDragging = false;
+    private bool isFlipped = false;
     //private bool isHighlighted = false;
     private Vector2 offset;
 
@@ -23,11 +26,7 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     {
         canvas = GetComponentInParent<Canvas>();
         cardsHandler = canvas.gameObject.GetComponentInParent<PlayingCardsTable>();
-
-        if (canvas == null)
-            Debug.Log("Null canv");
-        if (cardsHandler == null)
-            Debug.Log("Null cardsHandler");
+        GetComponent<Image>().sprite = sprite;
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -46,7 +45,16 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     {
         if (eventData.button == PointerEventData.InputButton.Right && !InHand)
         {
-            cardsHandler.ReturnCardToHand(this);
+            if (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed)
+            {
+                FlipCard();
+            }
+            else
+            {
+                if (isFlipped)
+                    FlipCard();
+                cardsHandler.ReturnCardToHand(this);
+            }
         }
     }
 
@@ -131,5 +139,15 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
             Vector2 newPosition = localPointerPosition + offset;
             GetComponent<RectTransform>().anchoredPosition = newPosition;
         }
+    }
+
+    private void FlipCard()
+    {
+        isFlipped = !isFlipped;
+        Image img = GetComponent<Image>();
+        if (isFlipped)
+            img.sprite = cardsHandler.PictureCardSprite;
+        else
+            img.sprite = sprite;
     }
 }
