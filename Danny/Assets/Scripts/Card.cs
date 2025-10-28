@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,8 +8,6 @@ using UnityEngine.UI;
 
 public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler, IPointerClickHandler
 {
-    [Header("Settings")]
-    [SerializeField] private float rotationSpeed = 0.5f;
     [SerializeField] private Sprite sprite;
 
     public bool InHand = false;
@@ -16,29 +15,24 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     public float Height => GetComponent<RectTransform>().rect.height;
 
     private Canvas canvas;
-    private PlayingCardsTable cardsHandler;
     private bool isDragging = false;
     private bool isFlipped = false;
-    //private bool isHighlighted = false;
     private Vector2 offset;
 
     public void Awake()
     {
         canvas = GetComponentInParent<Canvas>();
-        cardsHandler = canvas.gameObject.GetComponentInParent<PlayingCardsTable>();
         GetComponent<Image>().sprite = sprite;
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
         Debug.Log("Pointer Enter");
-        //isHighlighted = true;
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         Debug.Log("Pointer Exit");
-        //isHighlighted = false;
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -47,13 +41,13 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
         {
             if (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed)
             {
-                FlipCard();
+                StartCoroutine(PlayFlipAnimation());
             }
             else
             {
                 if (isFlipped)
-                    FlipCard();
-                cardsHandler.ReturnCardToHand(this);
+                    StartCoroutine(PlayFlipAnimation());
+                PlayingCardsTable.ReturnCardToHand(this);
             }
         }
     }
@@ -79,7 +73,7 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             isDragging = false;
-            if (InHand) cardsHandler.PlaceCardFromHandOnTable(this);
+            if (InHand) PlayingCardsTable.PlaceCardFromHandOnTable(this);
         }
     }
 
@@ -93,14 +87,11 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
 
     public void OnScroll(PointerEventData eventData)
     {
-        //if (!isHighlighted) return;
-
         float scrollDelta = eventData.scrollDelta.y;
 
         if (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed)
         {
-            cardsHandler.ChangeCardInOrder(this, -(int)Mathf.Sign(scrollDelta));
-            Debug.Log($"Новый порядок слоя: {canvas.sortingOrder}");
+            PlayingCardsTable.ChangeCardInOrder(this, -(int)Mathf.Sign(scrollDelta));
         }
         else
         {
@@ -125,7 +116,7 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     {
         float currentRotation = transform.rotation.eulerAngles.z;
         if (currentRotation > 180f) currentRotation -= 360f;
-        transform.rotation = Quaternion.Euler(0f, 0f, currentRotation + delta * rotationSpeed);
+        transform.rotation = Quaternion.Euler(0f, 0f, currentRotation + delta * PlayingCardsTable.CardsRotationSpeed);
     }
 
     private void FollowPointer(PointerEventData eventData)
@@ -146,8 +137,31 @@ public class Card : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
         isFlipped = !isFlipped;
         Image img = GetComponent<Image>();
         if (isFlipped)
-            img.sprite = cardsHandler.PictureCardSprite;
+            img.sprite = CardsStorage.PictureCardBackSprite;
         else
             img.sprite = sprite;
+    }
+
+    private IEnumerator PlayFlipAnimation()
+    {
+        RectTransform rectTransform = GetComponent<RectTransform>();
+        float targetWidth = rectTransform.rect.width;
+        float currentWidth = targetWidth;
+
+        while (currentWidth > 0)
+        {
+            currentWidth -= PlayingCardsTable.CardsFlipSpeed * Time.deltaTime;
+            currentWidth = Mathf.Max(0, currentWidth);
+            rectTransform.sizeDelta = new Vector2(currentWidth, rectTransform.sizeDelta.y);
+            yield return null;
+        }
+        FlipCard();
+        while (currentWidth < targetWidth)
+        {
+            currentWidth += PlayingCardsTable.CardsFlipSpeed * Time.deltaTime;
+            currentWidth = Mathf.Min(targetWidth, currentWidth);
+            rectTransform.sizeDelta = new Vector2(currentWidth, rectTransform.sizeDelta.y);
+            yield return null;
+        }
     }
 }

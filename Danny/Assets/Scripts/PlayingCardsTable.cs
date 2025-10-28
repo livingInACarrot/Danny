@@ -3,14 +3,15 @@ using UnityEngine;
 
 public class PlayingCardsTable : MonoBehaviour
 {
-    private const float HAND_CARDS_DOWN_OFFSET = 20f;
-    private const float HAND_CARDS_BETWEEN_OFFSET = 10f;
+    public const float CardsRotationSpeed = 0.5f;
+    public const float CardsFlipSpeed = 700f;
 
-    public Sprite PictureCardSprite;
+    private const float HandCardsDownOffset = 20f;
+    private const float HandCardsBetweenOffset = 10f;
 
-    private List<Card> cardsInHand = new();
-    private List<Card> cardsOnTable = new();
-    private int handCardsLayer;
+    private static List<Card> cardsInHand = new();
+    private static List<Card> cardsOnTable = new();
+    private static int handCardsLayer;
 
     public void Start()
     {
@@ -30,7 +31,7 @@ public class PlayingCardsTable : MonoBehaviour
         PlaceHandCards();
     }
 
-    public void PlaceCardFromHandOnTable(Card card)
+    public static void PlaceCardFromHandOnTable(Card card)
     {
         cardsInHand.Remove(card);
         cardsOnTable.Add(card);
@@ -39,7 +40,7 @@ public class PlayingCardsTable : MonoBehaviour
         PlaceHandCards();
     }
 
-    public void ReturnCardToHand(Card card)
+    public static void ReturnCardToHand(Card card)
     {
         cardsInHand.Add(card);
         cardsOnTable.Remove(card);
@@ -49,7 +50,7 @@ public class PlayingCardsTable : MonoBehaviour
         PlaceHandCards();
     }
 
-    public void ChangeCardInOrder(Card card, int offset)
+    public static void ChangeCardInOrder(Card card, int offset)
     {
         int index = cardsOnTable.IndexOf(card);
         int nexIndex = index + offset;
@@ -60,22 +61,22 @@ public class PlayingCardsTable : MonoBehaviour
         ReorderCardsLayers();
     }
 
-    private void PlaceHandCards()
+    private static void PlaceHandCards()
     {
         if (cardsInHand.Count == 0) return;
         float width = cardsInHand[0].Width;
         float height = cardsInHand[0].Height;
         float count = cardsInHand.Count;
-        float xPos = - (count - 1) * (HAND_CARDS_BETWEEN_OFFSET + width) / 2;
-        float yPos = HAND_CARDS_DOWN_OFFSET + (height - Screen.height) / 2;
+        float xPos = - (count - 1) * (HandCardsBetweenOffset + width) / 2;
+        float yPos = HandCardsDownOffset + (height - Screen.height) / 2;
         foreach (Card card in cardsInHand)
         {
             card.ReturnToHand(new Vector2(xPos, yPos));
-            xPos += HAND_CARDS_BETWEEN_OFFSET + width;
+            xPos += HandCardsBetweenOffset + width;
         }
     }
 
-    private void ReorderCardsLayers()
+    private static void ReorderCardsLayers()
     {
         for (int i = 0; i < cardsOnTable.Count; ++i)
         {
